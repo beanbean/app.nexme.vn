@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>nexme marathon - Wellness Score</title>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background: linear-gradient(180deg, #f5fdf9 0%, #e0f7ef 100%);
+        color: #222;
+        padding: 1.5rem;
+        max-width: 480px;
+        margin: auto;
+      }
+      h1 {
+        text-align: center;
+        color: #00a86b;
+        margin-bottom: 0.5rem;
+      }
+      p {
+        text-align: center;
+        margin-bottom: 1rem;
+        font-weight: 500;
+      }
+
+      /* ✅ mỗi khung thói quen click được toàn bộ */
+      .habit {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #fff;
+        border: 2px solid #ddd;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+        font-size: 16px;
+        line-height: 1.4;
+      }
+      .habit:hover {
+        background: #eefdf6;
+        border-color: #00a86b;
+      }
+      .habit input[type="checkbox"] {
+        width: 22px;
+        height: 22px;
+        accent-color: #00a86b;
+        pointer-events: none; /* không cần chạm trực tiếp vào ô */
+      }
+
+      button {
+        background-color: #00b37e;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.8rem 1.2rem;
+        font-size: 1rem;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 1rem;
+      }
+      button:hover {
+        background-color: #00996b;
+      }
+
+      .result {
+        margin-top: 1.5rem;
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #004d40;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🏃 nexme marathon</h1>
+    <p>Chọn các thói quen bạn đã hoàn thành hôm nay 👇</p>
+
+    <form id="form">
+      <label class="habit"
+        >🥤 Uống 2 ly Shake <input type="checkbox" name="shake"
+      /></label>
+      <label class="habit"
+        >🏃 Tập thể dục <input type="checkbox" name="exercise"
+      /></label>
+      <label class="habit"
+        >💧 Uống đủ nước <input type="checkbox" name="water"
+      /></label>
+      <label class="habit"
+        >🍲 Ăn tối lành mạnh <input type="checkbox" name="dinner"
+      /></label>
+      <label class="habit"
+        >🌙 Ngủ đủ 7 tiếng <input type="checkbox" name="sleep"
+      /></label>
+      <label class="habit"
+        >🚭 Không hút thuốc <input type="checkbox" name="nosmoke"
+      /></label>
+      <label class="habit"
+        >📉 Báo cân nặng sáng nay <input type="checkbox" name="weight"
+      /></label>
+      <label class="habit"
+        >💪 Không ăn vặt <input type="checkbox" name="nojunk"
+      /></label>
+
+      <button type="button" id="submit">Gửi kết quả</button>
+    </form>
+
+    <div id="result" class="result"></div>
+
+    <!-- SDK Zalo Mini App -->
+    <script src="https://static.zdn.vn/zalo-inapp/zaloMiniAppSDK.js"></script>
+    <script>
+      let userId = "";
+      let displayName = "";
+
+      // Lấy thông tin người dùng từ SDK
+      function initZaloIdentity() {
+        if (!window.zaloMiniApp || !zaloMiniApp.getUserInfo) {
+          console.warn("SDK chưa sẵn sàng – dùng fallback.");
+          userId = "fallback-" + Math.random().toString(36).slice(2, 8);
+          displayName = "bạn";
+          return;
+        }
+        zaloMiniApp.getUserInfo({
+          success: function (res) {
+            userId = res?.userInfo?.userId || "";
+            displayName = res?.userInfo?.name || "bạn";
+            if (!userId)
+              userId = "fallback-" + Math.random().toString(36).slice(2, 8);
+            console.log("Zalo User:", res?.userInfo);
+            // ✅ Cá nhân hoá lời chào
+            document.querySelector(
+              "p"
+            ).innerHTML = `${displayName}, hôm nay bạn đã hoàn thành thói quen nào rồi? 👇`;
+          },
+          fail: function (err) {
+            console.error("Không lấy được userId:", err);
+            userId = "fallback-" + Math.random().toString(36).slice(2, 8);
+            displayName = "bạn";
+          },
+        });
+      }
+
+      initZaloIdentity();
+
+      function getTodayISO() {
+        const d = new Date();
+        const tzoffset = d.getTimezoneOffset() * 60000;
+        return new Date(Date.now() - tzoffset).toISOString().split("T")[0];
+      }
+
+      document.getElementById("submit").addEventListener("click", function () {
+        const checks = Array.from(
+          document.querySelectorAll('input[type="checkbox"]')
+        );
+        const data = Object.fromEntries(
+          checks.map((cb) => [cb.name, cb.checked])
+        );
+        const total = checks.filter((cb) => cb.checked).length;
+        const percent = Math.round((total / checks.length) * 100);
+
+        // Hiển thị kết quả ngay
+        document.getElementById(
+          "result"
+        ).innerHTML = `🎉 ${displayName}, bạn đạt <strong>${total}/8</strong> điểm (⭐ ${percent}%) hôm nay!`;
+
+        // Gửi dữ liệu về n8n webhook
+        fetch("https://YOUR_N8N_WEBHOOK_URL", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            display_name: displayName,
+            date: getTodayISO(),
+            score: total,
+            percent: percent,
+            habits: data,
+          }),
+        })
+          .then(() => console.log("Đã gửi dữ liệu thành công"))
+          .catch((err) => console.error("Gửi dữ liệu thất bại:", err));
+      });
+    </script>
+  </body>
+</html>
