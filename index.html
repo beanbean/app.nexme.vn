@@ -182,6 +182,7 @@ const testPayload = {
 fetch("https://workflow.nexme.vn/webhook/f1c57765-a6bc-44fc-a7bc-abc3a2d51744/webhook", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
+  mode: "no-cors", // 🚀 thêm dòng này để tránh lỗi CORS
   body: JSON.stringify(testPayload)
 })
 .then(() => console.log("✅ Gửi test data thành công:", testPayload))
