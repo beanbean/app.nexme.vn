@@ -23,8 +23,6 @@
         margin-bottom: 1rem;
         font-weight: 500;
       }
-
-      /* ✅ mỗi khung thói quen click được toàn bộ */
       .habit {
         display: flex;
         align-items: center;
@@ -48,9 +46,8 @@
         width: 22px;
         height: 22px;
         accent-color: #00a86b;
-        pointer-events: none; /* không cần chạm trực tiếp vào ô */
+        pointer-events: none;
       }
-
       button {
         background-color: #00b37e;
         color: white;
@@ -65,7 +62,6 @@
       button:hover {
         background-color: #00996b;
       }
-
       .result {
         margin-top: 1.5rem;
         text-align: center;
@@ -77,75 +73,30 @@
   </head>
   <body>
     <h1>🏃 nexme marathon</h1>
-    <p>Chọn các thói quen bạn đã hoàn thành hôm nay 👇</p>
+    <p id="greeting">Chọn các thói quen bạn đã hoàn thành hôm nay 👇</p>
 
     <form id="form">
-      <label class="habit"
-        >🥤 Uống 2 ly Shake <input type="checkbox" name="shake"
-      /></label>
-      <label class="habit"
-        >🏃 Tập thể dục <input type="checkbox" name="exercise"
-      /></label>
-      <label class="habit"
-        >💧 Uống đủ nước <input type="checkbox" name="water"
-      /></label>
-      <label class="habit"
-        >🍲 Ăn tối lành mạnh <input type="checkbox" name="dinner"
-      /></label>
-      <label class="habit"
-        >🌙 Ngủ đủ 7 tiếng <input type="checkbox" name="sleep"
-      /></label>
-      <label class="habit"
-        >🚭 Không hút thuốc <input type="checkbox" name="nosmoke"
-      /></label>
-      <label class="habit"
-        >📉 Báo cân nặng sáng nay <input type="checkbox" name="weight"
-      /></label>
-      <label class="habit"
-        >💪 Không ăn vặt <input type="checkbox" name="nojunk"
-      /></label>
-
+      <label class="habit">🥤 Uống 2 ly Shake <input type="checkbox" name="shake" /></label>
+      <label class="habit">🏃 Tập thể dục <input type="checkbox" name="exercise" /></label>
+      <label class="habit">💧 Uống đủ nước <input type="checkbox" name="water" /></label>
+      <label class="habit">🍲 Ăn tối lành mạnh <input type="checkbox" name="dinner" /></label>
+      <label class="habit">🌙 Ngủ đủ 7 tiếng <input type="checkbox" name="sleep" /></label>
+      <label class="habit">🚭 Không hút thuốc <input type="checkbox" name="nosmoke" /></label>
+      <label class="habit">📉 Báo cân nặng sáng nay <input type="checkbox" name="weight" /></label>
+      <label class="habit">💪 Không ăn vặt <input type="checkbox" name="nojunk" /></label>
       <button type="button" id="submit">Gửi kết quả</button>
     </form>
 
     <div id="result" class="result"></div>
 
-    <!-- SDK Zalo Mini App -->
-   <!-- <script src="https://static.zdn.vn/zalo-inapp/zaloMiniAppSDK.js"></script> -->
+    <!-- SDK Zalo Mini App (bật lại khi deploy chính thức trong Zalo) -->
+    <!-- <script src="https://static.zdn.vn/zalo-inapp/zaloMiniAppSDK.js"></script> -->
+
     <script>
-      let userId = "";
-      let displayName = "";
+      let userId = "test_user_001";
+      let displayName = "Công Đậu (test)";
 
-      // Lấy thông tin người dùng từ SDK
-      function initZaloIdentity() {
-        if (!window.zaloMiniApp || !zaloMiniApp.getUserInfo) {
-          console.warn("SDK chưa sẵn sàng – dùng fallback.");
-          userId = "fallback-" + Math.random().toString(36).slice(2, 8);
-          displayName = "bạn";
-          return;
-        }
-        zaloMiniApp.getUserInfo({
-          success: function (res) {
-            userId = res?.userInfo?.userId || "";
-            displayName = res?.userInfo?.name || "bạn";
-            if (!userId)
-              userId = "fallback-" + Math.random().toString(36).slice(2, 8);
-            console.log("Zalo User:", res?.userInfo);
-            // ✅ Cá nhân hoá lời chào
-            document.querySelector(
-              "p"
-            ).innerHTML = `${displayName}, hôm nay bạn đã hoàn thành thói quen nào rồi? 👇`;
-          },
-          fail: function (err) {
-            console.error("Không lấy được userId:", err);
-            userId = "fallback-" + Math.random().toString(36).slice(2, 8);
-            displayName = "bạn";
-          },
-        });
-      }
-
-      initZaloIdentity();
-
+      // 👇 Hàm hỗ trợ
       function getTodayISO() {
         const d = new Date();
         const tzoffset = d.getTimezoneOffset() * 60000;
@@ -153,42 +104,54 @@
       }
 
       document.getElementById("submit").addEventListener("click", function () {
-        const checks = Array.from(
-          document.querySelectorAll('input[type="checkbox"]')
-        );
-        const data = Object.fromEntries(
-          checks.map((cb) => [cb.name, cb.checked])
-        );
+        const checks = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+        const data = Object.fromEntries(checks.map((cb) => [cb.name, cb.checked]));
         const total = checks.filter((cb) => cb.checked).length;
         const percent = Math.round((total / checks.length) * 100);
+        const today = getTodayISO();
+
+        // ✅ Lưu localStorage để so sánh tiến bộ hôm qua
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+        const lastScore = localStorage.getItem(`score-${yesterday}`);
+        localStorage.setItem(`score-${today}`, total);
+
+        let progressText = "";
+        if (lastScore !== null) {
+          const diff = total - parseInt(lastScore);
+          progressText =
+            diff > 0
+              ? `Tăng ${diff} điểm so với hôm qua 🔼`
+              : diff < 0
+              ? `Giảm ${Math.abs(diff)} điểm 🔽`
+              : "Giữ vững phong độ hôm qua 👏";
+        } else {
+          progressText = "Bắt đầu hành trình hôm nay 🌱";
+        }
 
         // Hiển thị kết quả ngay
-        document.getElementById(
-          "result"
-        ).innerHTML = `🎉 ${displayName}, bạn đạt <strong>${total}/8</strong> điểm (⭐ ${percent}%) hôm nay!`;
+        document.getElementById("result").innerHTML = `
+          🎯 ${displayName}, bạn đạt <strong>${total}/8</strong> điểm (${percent}%) hôm nay!<br/>
+          ${progressText}
+        `;
 
-        // Gửi dữ liệu về n8n webhook
-        
-        // 🧩 Đoạn gửi dữ liệu test đến n8n
-const testPayload = {
-  user_id: "test_user_001",
-  display_name: "Công Đậu (test)",
-  date: today,
-  score: total,
-  percent: percent,
-  habits: data
-};
+        // 🧩 Gửi dữ liệu test về n8n webhook
+        const payload = {
+          user_id: userId,
+          display_name: displayName,
+          date: today,
+          score: total,
+          percent: percent,
+          habits: data
+        };
 
-fetch("https://workflow.nexme.vn/webhook/f1c57765-a6bc-44fc-a7bc-abc3a2d51744/webhook", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  mode: "no-cors", // 🚀 thêm dòng này để tránh lỗi CORS
-  body: JSON.stringify(testPayload)
-})
-.then(() => console.log("✅ Gửi test data thành công:", testPayload))
-.catch(err => console.error("❌ Lỗi gửi dữ liệu:", err));
-          .then(() => console.log("Đã gửi dữ liệu thành công"))
-          .catch((err) => console.error("Gửi dữ liệu thất bại:", err));
+        fetch("https://workflow.nexme.vn/webhook/f1c57765-a6bc-44fc-a7bc-abc3a2d51744/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          mode: "no-cors",
+          body: JSON.stringify(payload)
+        })
+        .then(() => console.log("✅ Gửi dữ liệu thành công:", payload))
+        .catch(err => console.error("❌ Gửi dữ liệu lỗi:", err));
       });
     </script>
   </body>
